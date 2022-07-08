@@ -1,0 +1,98 @@
+﻿@inject IReport service;
+
+<Select class="form-select" SelectedValue="@year" TValue="int" SelectedValueChanged="@HandleYear">
+    @foreach (var item in Enumerable.Range(2010, 20))
+    {
+        <SelectItem Value="@item">@item</SelectItem>
+    }
+</Select>
+
+<LineChart @ref="lineChart" TItem="decimal" />
+
+@code {
+    private LineChart<decimal> lineChart;
+    private int year = DateTime.Now.Year;
+    private DataChart dataChart;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await HandleYear(year);
+        }
+    }
+
+    async Task HandleRedraw()
+    {
+        await lineChart.Clear();
+
+        await lineChart.AddLabelsDatasetsAndUpdate(Labels, await GetLineChartDatasetExpense(), await GetLineChartDatasetIncome());
+    }
+
+    private async Task HandleYear(int value)
+    {
+        year = value;
+        await SetDataChart();
+        await HandleRedraw();
+    }
+
+    async Task SetDataChart()
+    {
+        dataChart = await service.GetDataForChartAsync(year);
+    }
+
+    async Task<LineChartDataset<decimal>> GetLineChartDatasetExpense()
+    {
+        return new LineChartDataset<decimal>
+            {
+                Label = "# Expense",
+                Data = await GetDataExpense(),
+                BackgroundColor = backgroundColors,
+                BorderColor = borderColors,
+                Fill = true,
+                PointRadius = 3,
+                CubicInterpolationMode = "monotone",
+            };
+    }
+
+    async Task<LineChartDataset<decimal>> GetLineChartDatasetIncome()
+    {
+        return new LineChartDataset<decimal>
+            {
+                Label = "# Incomes",
+                Data = await GetDataIncomes(),
+                BackgroundColor = backgroundColors,
+                BorderColor = borderColors,
+                Fill = true,
+                PointRadius = 3,
+                CubicInterpolationMode = "monotone",
+            };
+    }
+
+    string[] Labels = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
+    List<string> backgroundColors = new List<string> { ChartColor.FromRgba(255, 99, 132, 0.2f), ChartColor.FromRgba(54, 162, 235, 0.2f), ChartColor.FromRgba(255, 206, 86, 0.2f), ChartColor.FromRgba(75, 192, 192, 0.2f), ChartColor.FromRgba(153, 102, 255, 0.2f), ChartColor.FromRgba(255, 159, 64, 0.2f) };
+    List<string> borderColors = new List<string> { ChartColor.FromRgba(255, 99, 132, 1f), ChartColor.FromRgba(54, 162, 235, 1f), ChartColor.FromRgba(255, 206, 86, 1f), ChartColor.FromRgba(75, 192, 192, 1f), ChartColor.FromRgba(153, 102, 255, 1f), ChartColor.FromRgba(255, 159, 64, 1f) };
+
+    async Task<List<decimal>> GetDataExpense()
+    {
+        List<decimal> totalExpenses = new List<decimal>();
+        for (int i = 1; i < 13; i++)
+        {
+            totalExpenses.Add(dataChart.TotalExpenses[i]);
+        }
+        
+        return totalExpenses;
+    }
+
+    async Task<List<decimal>> GetDataIncomes()
+    {
+        List<decimal> totalIncomes = new List<decimal>();
+        for (int i = 1; i < 13; i++)
+        {
+            totalIncomes.Add(dataChart.TotalIncomes[i]);
+        }
+        
+        return totalIncomes;
+    }
+    }

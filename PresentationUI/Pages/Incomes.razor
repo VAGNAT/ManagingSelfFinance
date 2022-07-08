@@ -1,0 +1,215 @@
+﻿@page "/incomes"
+
+@inject ICRUD<TypeIncome> serviceTypeIncome;
+@inject ICRUD<Income> serviceIncome;
+
+<PageTitle>Incomes</PageTitle>
+
+<h1>Incomes</h1>
+<div class="container">
+    <div class="row mb-3">
+        <div class="col">
+            <button type="button" class="btn btn-outline-success" @onclick="ShowCreate">
+                <span class="fw-bolder"><i class="oi oi-plus"></i> Add</span>
+            </button>
+        </div>
+        <div class="col d-flex justify-content-end">
+            <a href="/types">Edit income types...</a>
+        </div>
+    </div>
+    @if (_incomes == null)
+    {
+        <Loading />
+    }
+    else if (_amountItems == 0)
+    {
+        <Empty />
+    }
+    else
+    {
+        <IncomeTable Incomes="_incomes" ActiveNumber="_activeNumber" ShowEdit="ShowEdit" OnDelete="OnDelete" />
+        <GridSwitch GridNumber="_gridNumber" Switch="Switch" />
+    }
+</div>
+
+<FormIncome @ref="_editIncome" Income="_incomeToBeChange" TypeIncomes="_typeIncomes" OnValidSubmit="OnSaveChanges" OnCancel="OnCancelEdit" />
+
+<Confirmation @ref="_confirmation" OnCancel="OnCancel" OnConfirm="OnConfirm">
+    <div class="text-danger">@_confirmationText</div>
+</Confirmation>
+
+@code {
+    private GridNumber? _gridNumber;
+    private IEnumerable<Income>? _incomes;
+    private IEnumerable<TypeIncome>? _typeIncomes;
+    private IEnumerable<Income>? _allIncomes;
+
+    private bool _add;
+
+    private const int numbersItems = 10;
+    private int _amountItems;
+    private int _activeNumber;
+    private Dictionary<int, int>? _pageNumbers;
+
+    private Confirmation? _confirmation;
+    private string _confirmationText;
+    private Func<Task> OnConfirm;
+
+    private FormIncome? _editIncome;
+    private Income? _incomeToBeDeleted;
+    private Income? _incomeToBeChange;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        _pageNumbers = new Dictionary<int, int>();
+        _activeNumber = 1;
+        await InvokeAsync(UpdateFieldValue);
+    }
+
+    private async Task UpdateFieldValue()
+    {
+        _incomeToBeChange = null;
+        _incomeToBeDeleted = null;
+        _incomes = null;
+        await GetAllIncomes();
+        _amountItems = _allIncomes.Count();
+        if (_amountItems != 0)
+        {
+            GetIncomes();
+        }
+        SetGridNumber();
+        await GetTypeIncomes();
+    }
+
+    private async Task GetAllIncomes()
+    {
+        _allIncomes = await serviceIncome.GetAllAsync();
+    }
+
+    private async Task GetTypeIncomes()
+    {
+        _typeIncomes = await serviceTypeIncome.GetAllAsync();
+    }
+
+    private void GetIncomes()
+    {
+        _incomes = _allIncomes.Skip(numbersItems * (_activeNumber - 1)).Take(numbersItems).ToList();
+    }
+
+    private void SetGridNumber()
+    {
+        int numbersPage = _amountItems / numbersItems;
+        if (_amountItems % numbersItems != 0)
+        {
+            numbersPage++;
+        }
+
+        if (_activeNumber > numbersPage)
+        {
+            _activeNumber = numbersPage;
+        }
+
+        int _firstPage = _activeNumber switch
+        {
+            1 => 1,
+            2 => 1,
+            _ => _activeNumber - 2
+        };
+
+        _pageNumbers.Clear();
+        for (int i = 1; i < 6; i++)
+        {
+            if (_firstPage + i - 1 <= numbersPage)
+            {
+                _pageNumbers.Add(i, _firstPage + i - 1);
+            }
+            else
+            {
+                _pageNumbers.Add(i, 0);
+            }
+        }
+
+        _gridNumber = new GridNumber()
+            {
+                ActiveNumber = _activeNumber,
+                LastNumber = numbersPage,
+                FirstNumber = _pageNumbers[1],
+                SecondNumber = _pageNumbers[2],
+                ThirdNumber = _pageNumbers[3],
+                FourthNumber = _pageNumbers[4],
+                FifthNumber = _pageNumbers[5]
+            };
+    }
+
+    private async Task Switch(int activeNumber)
+    {
+        _activeNumber = activeNumber;
+        await InvokeAsync(UpdateFieldValue);
+    }
+
+    private void OnDelete(Income income)
+    {
+        _incomeToBeDeleted = income;
+        _confirmationText = $"Do you wish to delete the entry from {_incomeToBeDeleted.Date.ToLongDateString()} ?";
+        OnConfirm = OnDeleteIncome;
+        _confirmation.Show();
+    }
+
+    async Task OnDeleteIncome()
+    {
+        await serviceIncome.DeleteByIdAsync(_incomeToBeDeleted.Id);
+        _confirmation.Hide();
+        await InvokeAsync(UpdateFieldValue);
+    }
+
+    async Task OnCancel()
+    {
+        _confirmation.Hide();
+        _incomeToBeDeleted = null;
+    }
+
+    private void ShowEdit(Income income)
+    {
+        _add = false;
+        _incomeToBeChange = income;
+        _editIncome.Show();
+    }
+
+    async Task OnCancelEdit()
+    {
+        _editIncome.Hide();
+        _incomeToBeChange = null;
+    }
+
+    private void ShowCreate()
+    {
+        _add = true;
+        _incomeToBeChange = new() { Date = DateTime.Now, TypeIncome = _typeIncomes.FirstOrDefault(), TypeIncomeId = _typeIncomes.FirstOrDefault().Id };
+        _editIncome.Show();
+    }
+
+    private void OnSaveChanges()
+    {
+        _incomeToBeChange.TypeIncome = _typeIncomes.Where(t => t.Id == _incomeToBeChange.TypeIncomeId).FirstOrDefault();
+        _confirmationText = $"Do you wish to save the entry from {_incomeToBeChange.Date.ToLongDateString()}?";
+        OnConfirm = OnSave;
+        _confirmation.Show();
+    }
+
+    async Task OnSave()
+    {
+        _editIncome.Hide();
+        if (_add)
+        {
+            await serviceIncome.CreateAsync(_incomeToBeChange);
+        }
+        else
+        {
+            await serviceIncome.UpdateAsync(_incomeToBeChange);
+        }
+        _confirmation.Hide();
+        await InvokeAsync(UpdateFieldValue);
+    }
+    }
+

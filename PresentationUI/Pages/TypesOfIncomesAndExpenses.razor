@@ -1,0 +1,252 @@
+﻿@page "/types"
+
+@inject ICRUD<TypeExpense> serviceTypeExpense;
+@inject ICRUD<TypeIncome> serviceTypeIncome;
+@inject ICheck serviceCheck;
+
+<PageTitle>Types</PageTitle>
+
+<div class="container">
+    <div class="row">
+        <div class="col-6">
+            <h1>Incomes</h1>
+        </div>
+        <div class="col-6">
+            <h1>Expenses</h1>
+        </div>        
+    </div>
+    <div class="row mb-3">
+        <div class="col-6">
+            <button type="button" class="btn btn-outline-success" @onclick="ShowCreateIncomes">
+                <span class="fw-bolder"><i class="oi oi-plus"></i> Add</span>
+            </button>
+        </div>
+        <div class="col-6">
+            <button type="button" class="btn btn-outline-success" @onclick="ShowCreateExpense">
+                <span class="fw-bolder"><i class="oi oi-plus"></i> Add</span>
+            </button>
+        </div>        
+    </div>
+    <div class="row">
+        <div class="col-6">
+            @if (_typeIncomes == null)
+            {
+                <Loading />
+            }
+            else if (_typeIncomes.Count() == 0)
+            {
+                <Empty />
+            }
+            else
+            {
+                <TypeIncomesTable TypeIncomes="_typeIncomes" ShowEdit="ShowEditTypeIncome" OnDelete="OnDeleteTypeIncome" />
+            }
+        </div>
+        <div class="col-6">
+            @if (_typeExpenses == null)
+            {
+                <Loading />
+            }
+            else if (_typeExpenses.Count() == 0)
+            {
+                <Empty />
+            }
+            else
+            {
+                <TypeExpenseTable TypeExpenses="_typeExpenses" ShowEdit="ShowEditTypeExpense" OnDelete="OnDeleteTypeExpense" />
+            }
+        </div>        
+    </div>
+</div>
+
+<FormTypeExpense @ref="_editTypeExpense" TypeExpense="_typeExpenseToBeChange" OnValidSubmit="OnSaveChanges" OnCancel="OnCancelEdit" />
+
+<FormTypeIncome @ref="_editTypeIncome" TypeIncome="_typeIncomeToBeChange" OnValidSubmit="OnSaveChanges" OnCancel="OnCancelEdit" />
+
+<FormAlert @ref="_alert" OnOk="OnOk">
+    <div class="text-info">It is not possible to delete used type.</div>
+</FormAlert>
+
+<Confirmation @ref="_confirmation" OnCancel="OnCancel" OnConfirm="OnConfirm">
+    <div class="text-danger">@_confirmationText</div>
+</Confirmation>
+
+@code {
+    private IEnumerable<TypeExpense> _typeExpenses;
+    private IEnumerable<TypeIncome> _typeIncomes;
+
+    private bool _add;
+
+    private Confirmation? _confirmation;
+    private string _confirmationText;
+    private Func<Task> OnConfirm;
+
+    private FormAlert? _alert;
+
+    private FormTypeExpense? _editTypeExpense;
+    private TypeExpense? _typeExpenseToBeDeleted;
+    private TypeExpense? _typeExpenseToBeChange;
+
+    private FormTypeIncome? _editTypeIncome;
+    private TypeIncome? _typeIncomeToBeDeleted;
+    private TypeIncome? _typeIncomeToBeChange;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await InvokeAsync(UpdateFieldValue);
+    }
+
+    private async Task UpdateFieldValue()
+    {
+        StateHasChanged();
+        _typeExpenses = null;
+        _typeIncomes = null;
+        _typeExpenseToBeDeleted = null;
+        _typeIncomeToBeDeleted = null;
+        _typeExpenseToBeChange = null;
+        _typeIncomeToBeChange = null;        
+        await GetTypeExpenses();
+        await GetTypeIncomes();
+    }
+
+    private async Task GetTypeExpenses()
+    {
+        _typeExpenses = await serviceTypeExpense.GetAllAsync();
+    }
+
+    private async Task GetTypeIncomes()
+    {
+        _typeIncomes = await serviceTypeIncome.GetAllAsync();
+    }
+
+    private void ShowCreateExpense()
+    {
+        _add = true;
+        _typeExpenseToBeChange = new();
+        _editTypeExpense.Show();
+    }
+
+    private void ShowCreateIncomes()
+    {
+        _add = true;
+        _typeIncomeToBeChange = new();
+        _editTypeIncome.Show();
+    }
+
+    private void ShowEditTypeExpense(TypeExpense typeExpense)
+    {
+        _add = false;
+        _typeExpenseToBeChange = typeExpense;
+        _editTypeExpense.Show();
+    }
+
+    private void ShowEditTypeIncome(TypeIncome typeIncome)
+    {
+        _add = false;
+        _typeIncomeToBeChange = typeIncome;
+        _editTypeIncome.Show();
+    }
+
+    private void OnSaveChanges()
+    {
+        _confirmationText = "Do you wish to save the entry?";
+        OnConfirm = OnConfirmSave;
+        _confirmation.Show();
+    }
+
+    private async Task OnConfirmSave()
+    {
+        if (_typeExpenseToBeChange is not null)
+        {
+            if (_add)
+            {
+
+                await serviceTypeExpense.CreateAsync(_typeExpenseToBeChange);
+            }
+            else
+            {
+                await serviceTypeExpense.UpdateAsync(_typeExpenseToBeChange);
+            }
+            _editTypeExpense.Hide();
+        }
+        else if (_typeIncomeToBeChange is not null)
+        {
+            if (_add)
+            {
+                await serviceTypeIncome.CreateAsync(_typeIncomeToBeChange);
+            }
+            else
+            {
+                await serviceTypeIncome.UpdateAsync(_typeIncomeToBeChange);
+            }
+            _editTypeIncome.Hide();
+        }
+        _confirmation.Hide();
+        await InvokeAsync(UpdateFieldValue);
+    }
+
+    private void OnCancelEdit()
+    {
+        _typeExpenseToBeChange = null;
+        _typeIncomeToBeChange = null;
+        _add = false;
+        _editTypeExpense.Hide();
+        _editTypeIncome.Hide();
+    }
+
+    private async Task OnDeleteTypeExpense(TypeExpense typeExpense)
+    {
+        if (await serviceCheck.PossibleToRemoveTypeExpenseAsync(typeExpense.Id))
+        {
+            _alert.Show();
+        }
+        else
+        {
+            _typeExpenseToBeDeleted = typeExpense;
+            _confirmationText = $"Do you wish to delete the entry with the name of {_typeExpenseToBeDeleted.Name}?";
+            OnConfirm = OnConfirmDelete;
+            _confirmation.Show();
+        }
+    }
+
+    private async Task OnDeleteTypeIncome(TypeIncome typeIncome)
+    {
+        if (await serviceCheck.PossibleToRemoveTypeIncomeAsync(typeIncome.Id))
+        {
+            _alert.Show();
+        }
+        else
+        {
+            _typeIncomeToBeDeleted = typeIncome;
+            _confirmationText = $"Do you wish to delete the entry with the name of {_typeIncomeToBeDeleted.Name}?";
+            OnConfirm = OnConfirmDelete;
+            _confirmation.Show();
+        }
+    }
+
+    async Task OnConfirmDelete()
+    {
+        if (_typeExpenseToBeDeleted is not null)
+        {
+            await serviceTypeExpense.DeleteByIdAsync(_typeExpenseToBeDeleted.Id);            
+        }
+        else if (_typeIncomeToBeDeleted is not null)
+        {
+            await serviceTypeIncome.DeleteByIdAsync(_typeIncomeToBeDeleted.Id);            
+        }
+
+        _confirmation.Hide();
+        await InvokeAsync(UpdateFieldValue);
+    }
+
+    void OnCancel()
+    {
+        _confirmation.Hide();        
+    }
+
+    void OnOk()
+    {
+        _alert.Hide();
+    }
+}

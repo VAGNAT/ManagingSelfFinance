@@ -1,0 +1,87 @@
+﻿<div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
+    <div class="btn-group p-2 mb-2" role="group" aria-label="First group">
+        @if (GridNumber.ActiveNumber == 1)
+        {
+            <button type="button" class="btn btn-info active" @onclick="(() => Switch.InvokeAsync(1))">1</button>
+        }
+        else
+        {
+            <button type="button" class="btn btn-info" @onclick="(() => Switch.InvokeAsync(1))">1</button>
+        }
+    </div>
+    <div class="btn-group p-2 mb-2" role="group" aria-label="Second group">
+        @if (GridNumber.FirstNumber != 0)
+        {
+            @if (GridNumber.ActiveNumber == GridNumber.FirstNumber)
+            {
+                <button type="button" class="btn btn-info active" @onclick="(() => Switch.InvokeAsync(GridNumber.FirstNumber))">@GridNumber.FirstNumber</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-info" @onclick="(() => Switch.InvokeAsync(GridNumber.FirstNumber))">@GridNumber.FirstNumber</button>
+            }
+        }
+        @if (GridNumber.SecondNumber != 0)
+        {
+            @if (GridNumber.ActiveNumber == GridNumber.SecondNumber)
+            {
+                <button type="button" class="btn btn-info active" @onclick="(() => Switch.InvokeAsync(GridNumber.SecondNumber))">@GridNumber.SecondNumber</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-info" @onclick="(() => Switch.InvokeAsync(GridNumber.SecondNumber))">@GridNumber.SecondNumber</button>
+            }
+        }
+        @if (GridNumber.ThirdNumber != 0)
+        {
+            @if (GridNumber.ActiveNumber == GridNumber.ThirdNumber)
+            {
+                <button type="button" class="btn btn-info active" @onclick="(() => Switch.InvokeAsync(GridNumber.ThirdNumber))">@GridNumber.ThirdNumber</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-info" @onclick="(() => Switch.InvokeAsync(GridNumber.ThirdNumber))">@GridNumber.ThirdNumber</button>
+            }   }
+        @if (GridNumber.FourthNumber != 0)
+        {
+            @if (GridNumber.ActiveNumber == GridNumber.FourthNumber)
+            {
+                <button type="button" class="btn btn-info active" @onclick="(() => Switch.InvokeAsync(GridNumber.FourthNumber))">@GridNumber.FourthNumber</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-info" @onclick="(() => Switch.InvokeAsync(GridNumber.FourthNumber))">@GridNumber.FourthNumber</button>
+            }
+        }
+        @if (GridNumber.FifthNumber != 0)
+        {
+            @if (GridNumber.ActiveNumber == GridNumber.FifthNumber)
+            {
+                <button type="button" class="btn btn-info active" @onclick="(() => Switch.InvokeAsync(GridNumber.FifthNumber))">@GridNumber.FifthNumber</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-info" @onclick="(() => Switch.InvokeAsync(GridNumber.FifthNumber))">@GridNumber.FifthNumber</button>
+            }
+        }
+    </div>
+    <div class="btn-group p-2 mb-2" role="group" aria-label="Third group">
+        @if (GridNumber.ActiveNumber == GridNumber.LastNumber)
+        {
+            <button type="button" class="btn btn-info active" @onclick="(() => Switch.InvokeAsync(GridNumber.LastNumber))">@GridNumber.LastNumber</button>
+        }
+        else
+        {
+            <button type="button" class="btn btn-info" @onclick="(() => Switch.InvokeAsync(GridNumber.LastNumber))">@GridNumber.LastNumber</button>
+        }
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public GridNumber GridNumber { get; set; }
+    [Parameter]
+    public EventCallback<int> Switch { get; set; }
+
+}

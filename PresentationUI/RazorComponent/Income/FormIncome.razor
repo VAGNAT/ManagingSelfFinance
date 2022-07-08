@@ -1,0 +1,53 @@
+﻿@if (_displayEdit)
+{
+    <div class="modal-backdrop show"></div>
+    <EditForm class="modal fade show" tabindex="-1" aria-hidden="true" style="display: block" Model="@Income" OnValidSubmit="OnValidSubmit">
+        <DataAnnotationsValidator />
+        <div class="modal-content container" role="document">
+            <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>                    
+                </div>
+            <div class="form-group modal-body">
+                <label>Date:</label>
+                <div class="">
+                    <InputDate class="form-control" @bind-Value="Income.Date" />
+                    <ValidationMessage For="@(() => Income.Date)"></ValidationMessage>
+                </div>
+            </div>
+            <div class="form-group modal-body">
+                <label>Type:</label>
+                <div>
+                    <InputSelect class="form-select" @bind-Value="Income.TypeIncomeId">
+                        @foreach (TypeIncome item in TypeIncomes)
+                        {
+                        <option value=@item.Id>@item.Name</option>
+                        }
+                </InputSelect>
+                <ValidationMessage For="@(() => Income.TypeIncome)"></ValidationMessage>
+            </div>
+        </div>
+        <div class="form-group modal-body">
+            <label>Amount:</label>
+            <div class="">
+                <InputNumber class="form-control" @bind-Value="Income.Amount" />
+                <ValidationMessage For="@(() => Income.Amount)"></ValidationMessage>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" type="submit">Save Changes</button>
+            <button @onclick="OnCancel" type="button" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</EditForm>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = "Change income";
+    [Parameter] public Income? Income { get; set; }
+    [Parameter] public IEnumerable<TypeIncome>? TypeIncomes { get; set; }
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    private bool _displayEdit = false;    
+    public void Show() => _displayEdit = true;
+    public void Hide() => _displayEdit = false;    
+}

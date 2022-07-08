@@ -1,0 +1,141 @@
+﻿@inject IReport service;
+
+<div class="col-6">
+    <h1>Daily report</h1>
+    <p>The report shows income and expenses for the specified date.</p>
+    <div class="row g-3 align-items-center">
+        <div class="col-auto mb-3">
+            <label>Date:</label>
+        </div>
+        <div class="col-auto mb-3">
+            <input type="date" class="form-control" value="@_date.ToString("yyyy-MM-dd")" @onchange="OnChangeDate" />
+        </div>
+    </div>
+
+    @if (_items == null)
+    {
+        <Loading />
+    }
+    else if (_items.Count == 0)
+    {
+        <Empty />
+    }
+    else
+    {
+        <div class="row mb-3">
+            <div class="col-3">
+                <label for="totalIncomes" class="col-form-label">Total incomes</label>
+            </div>
+            <div class="col-3">
+                <input type="number" readonly id="totalIncomes" class="form-control" @bind="_totalIncomes">
+            </div>
+            <div class="col-3">
+                <label for="totalExpense" class="col-form-label">Total expenses</label>
+            </div>
+            <div class="col-3">
+                <input type="number" readonly id="totalExpense" class="form-control" @bind="_totalExpenses">
+            </div>
+        </div>
+        <table class="table table-info table-striped table-bordered">
+            <thead>
+                <tr>
+                    <th>&#35;</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in _items)
+                {
+                    <tr>
+                        <td>@count</td>
+                        @if (@item.Type == TypeForReport.Income)
+                        {
+                            <td><span class="oi oi-plus" aria-hidden="true"></span></td>
+                        }
+                        else
+                        {
+                            <td><span class="oi oi-minus" aria-hidden="true"></span></td>
+                        }
+                        <td>@item.Date</td>
+                        <td>@item.Name</td>
+                        <td>@item.Amount</td>
+                    </tr>
+                    count++;
+                }
+            </tbody>
+        </table>
+    }
+</div>
+<FormAlert @ref="_alert" OnOk="OnOk">
+    <div class="text-info">@_alertText</div>
+</FormAlert>
+@code {
+    private int count;
+    private List<ItemReport>? _items;
+    private DateTime _date;
+    private decimal _totalIncomes;
+    private decimal _totalExpenses;
+
+    private FormAlert _alert;
+    private string _alertText;
+
+    protected override async Task OnInitializedAsync()
+    {
+        count = 1;
+        _date = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+        await InvokeAsync(DailyReport);
+    }
+
+    private async Task OnChangeDate(ChangeEventArgs args)
+    {
+        _items = null;
+        count = 1;
+        count = 1;
+        string? value = args?.Value?.ToString();
+        if (value == String.Empty)
+        {
+            _alertText = "The date is incorrect!";
+            _alert.Show();
+            _items = new();
+            return;
+        }
+        _date = DateTime.Parse(value);
+        await InvokeAsync(DailyReport);
+    }
+
+    private async Task DailyReport()
+    {
+        await Task.Delay(500);
+        DailyReport report = await service.GetDailyReportAsync(_date);
+        _totalExpenses = report.TotalExpenses;
+        _totalIncomes = report.TotalIncomes;
+        List<ItemReport> incomes = report.Incomes.Select(i =>
+        new ItemReport
+            {
+                Type = TypeForReport.Income,
+                Date = new DateOnly(i.Date.Year, i.Date.Month, i.Date.Day),
+                Name = i.TypeIncome.Name,
+                Amount = i.Amount
+            }).ToList();
+
+        List<ItemReport> expenses = report.Expenses.Select(i =>
+        new ItemReport
+            {
+                Type = TypeForReport.Expense,
+                Date = new DateOnly(i.Date.Year, i.Date.Month, i.Date.Day),
+                Name = i.TypeExpense.Name,
+                Amount = i.Amount
+            }).ToList();
+
+        _items = incomes.Union(expenses).GroupBy(x => new { x.Type, x.Date, x.Name }, x => x.Amount)
+        .Select(x => new ItemReport { Type = x.Key.Type, Date = x.Key.Date, Name = x.Key.Name, Amount = x.Sum() }).ToList();
+    }
+
+    private void OnOk()
+    {
+        _alert.Hide();
+    }
+    }

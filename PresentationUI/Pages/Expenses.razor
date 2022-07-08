@@ -1,0 +1,216 @@
+﻿@page "/expenses"
+
+@inject ICRUD<TypeExpense> serviceTypeExpense;
+@inject ICRUD<Expense> serviceExpense;
+
+<PageTitle>Expenses</PageTitle>
+
+<h1>Expenses</h1>
+<div class="container">
+    <div class="row mb-3">
+        <div class="col">
+            <button type="button" class="btn btn-outline-success" @onclick="ShowCreate">
+                <span class="fw-bolder"><i class="oi oi-plus"></i> Add</span>
+            </button>
+        </div>
+        <div class="col d-flex justify-content-end">
+            <a href="/types">Edit expense types...</a>
+        </div>
+    </div>
+    @if (_expenses == null)
+    {
+        <Loading />
+    }
+    else if (_amountItems == 0)
+    {
+        <Empty />
+    }
+    else
+    {
+        <ExpenseTable Expenses="_expenses" ActiveNumber="_activeNumber" ShowEdit="ShowEdit" OnDelete="OnDelete" />
+        <GridSwitch GridNumber="_gridNumber" Switch="Switch" />
+    }
+</div>
+
+<FormExpense @ref="_editExpense" Expense="_expenseToBeChange" TypeExpenses="_typeExpenses" OnValidSubmit="OnSaveChanges" OnCancel="OnCancelEdit" />
+
+<Confirmation @ref="_confirmation" OnCancel="OnCancel" OnConfirm="OnConfirm">
+    <div class="text-danger">@_confirmationText</div>
+</Confirmation>
+
+@code {
+    private GridNumber? _gridNumber;
+    private IEnumerable<Expense>? _expenses;
+    private IEnumerable<TypeExpense>? _typeExpenses;
+    private IEnumerable<Expense>? _allExpenses;
+
+    private bool _add;
+
+    private const int numbersItems = 10;
+    private int _amountItems;
+    private int _activeNumber;
+    private Dictionary<int, int>? _pageNumbers;
+
+    private Confirmation? _confirmation;
+    private string _confirmationText;
+    private Func<Task> OnConfirm;
+
+    private FormExpense? _editExpense;
+    private Expense? _expenseToBeDeleted;
+    private Expense? _expenseToBeChange;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        _pageNumbers = new Dictionary<int, int>();
+        _activeNumber = 1;
+        await InvokeAsync(UpdateFieldValue);
+    }
+
+    private async Task UpdateFieldValue()
+    {
+        _expenseToBeChange = null;
+        _expenseToBeDeleted = null;
+        _expenses = null;
+        _allExpenses = null;
+        await GetAllExpenses();
+        _amountItems = _allExpenses.Count();
+        if (_amountItems != 0)
+        {
+            GetExpenses();
+        }
+        SetGridNumber();
+        await GetTypeExpenses();        
+    }
+
+    private async Task GetAllExpenses()
+    {
+        _allExpenses = await serviceExpense.GetAllAsync();
+    }
+
+    private async Task GetTypeExpenses()
+    {
+        _typeExpenses = await serviceTypeExpense.GetAllAsync();
+    }
+
+    private void GetExpenses()
+    {
+        _expenses = _allExpenses?.Skip(numbersItems * (_activeNumber - 1)).Take(numbersItems).ToList();
+    }
+
+    private void SetGridNumber()
+    {
+        int numbersPage = _amountItems / numbersItems;
+        if (_amountItems % numbersItems != 0)
+        {
+            numbersPage++;
+        }
+
+        if (_activeNumber > numbersPage)
+        {
+            _activeNumber = numbersPage;
+        }
+
+        int _firstPage = _activeNumber switch
+        {
+            1 => 1,
+            2 => 1,
+            _ => _activeNumber - 2
+        };
+
+        _pageNumbers.Clear();
+        for (int i = 1; i < 6; i++)
+        {
+            if (_firstPage + i - 1 <= numbersPage)
+            {
+                _pageNumbers.Add(i, _firstPage + i - 1);
+            }
+            else
+            {
+                _pageNumbers.Add(i, 0);
+            }
+        }
+
+        _gridNumber = new GridNumber()
+            {
+                ActiveNumber = _activeNumber,
+                LastNumber = numbersPage,
+                FirstNumber = _pageNumbers[1],
+                SecondNumber = _pageNumbers[2],
+                ThirdNumber = _pageNumbers[3],
+                FourthNumber = _pageNumbers[4],
+                FifthNumber = _pageNumbers[5]
+            };
+    }
+
+    private async Task Switch(int activeNumber)
+    {
+        _activeNumber = activeNumber;
+        await InvokeAsync(UpdateFieldValue);
+    }
+
+    private void OnDelete(Expense expense)
+    {
+        _expenseToBeDeleted = expense;
+        _confirmationText = $"Do you wish to delete the entry from {_expenseToBeDeleted.Date.ToLongDateString()} ?";
+        OnConfirm = OnDeleteExpense;
+        _confirmation.Show();
+    }
+
+    async Task OnDeleteExpense()
+    {
+        await serviceExpense.DeleteByIdAsync(_expenseToBeDeleted.Id);
+        _confirmation.Hide();
+        await InvokeAsync(UpdateFieldValue);
+    }
+
+    async Task OnCancel()
+    {
+        _confirmation.Hide();
+        _expenseToBeDeleted = null;
+    }
+
+    private void ShowEdit(Expense expense)
+    {
+        _add = false;
+        _expenseToBeChange = expense;
+        _editExpense.Show();
+    }
+
+    async Task OnCancelEdit()
+    {
+        _editExpense.Hide();
+        _expenseToBeChange = null;
+    }
+
+    private void ShowCreate()
+    {
+        _add = true;
+        _expenseToBeChange = new() { Date = DateTime.Now, TypeExpense = _typeExpenses.FirstOrDefault(), TypeExpenseId = _typeExpenses.FirstOrDefault().Id };
+        _editExpense.Show();
+    }
+
+    private void OnSaveChanges()
+    {
+        _expenseToBeChange.TypeExpense = _typeExpenses.Where(t => t.Id == _expenseToBeChange.TypeExpenseId).FirstOrDefault();
+        _confirmationText = $"Do you wish to save the entry from {_expenseToBeChange.Date.ToLongDateString()}?";
+        OnConfirm = OnSave;
+        _confirmation.Show();
+    }
+
+    async Task OnSave()
+    {
+        _editExpense.Hide();
+        if (_add)
+        {
+            await serviceExpense.CreateAsync(_expenseToBeChange);
+        }
+        else
+        {
+            await serviceExpense.UpdateAsync(_expenseToBeChange);
+        }
+        _confirmation.Hide();
+        await InvokeAsync(UpdateFieldValue);
+    }
+    }
+
